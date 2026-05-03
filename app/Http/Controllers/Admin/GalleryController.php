@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Gallery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -91,9 +91,7 @@ class GalleryController extends Controller
         );
 
         if ($request->hasFile('image')) {
-            if ($gallery->image && Storage::disk('public')->exists($gallery->image)) {
-                Storage::disk('public')->delete($gallery->image);
-            }
+            $this->deletePublicStorageFile($gallery->image);
 
             $validated['image'] = $this->compressAndStoreImage($request->file('image'));
         }
@@ -110,9 +108,7 @@ class GalleryController extends Controller
 
     public function destroy(Gallery $gallery): RedirectResponse
     {
-        if ($gallery->image && Storage::disk('public')->exists($gallery->image)) {
-            Storage::disk('public')->delete($gallery->image);
-        }
+        $this->deletePublicStorageFile($gallery->image);
 
         $gallery->delete();
 
@@ -129,12 +125,30 @@ class GalleryController extends Controller
 
         $filename = 'galleries/' . date('Y/m') . '/' . Str::uuid() . '.jpg';
 
-        Storage::disk('public')->makeDirectory(dirname($filename));
+        $fullPath = public_path('storage/' . $filename);
+        $directory = dirname($fullPath);
+
+        if (!File::exists($directory)) {
+            File::makeDirectory($directory, 0755, true);
+        }
 
         $encoded = $image->toJpeg(75);
 
-        Storage::disk('public')->put($filename, (string) $encoded);
+        File::put($fullPath, (string) $encoded);
 
         return $filename;
+    }
+
+    private function deletePublicStorageFile(?string $path): void
+    {
+        if (!$path) {
+            return;
+        }
+
+        $fullPath = public_path('storage/' . $path);
+
+        if (File::exists($fullPath)) {
+            File::delete($fullPath);
+        }
     }
 }

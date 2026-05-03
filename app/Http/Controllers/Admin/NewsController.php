@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\News;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -49,7 +49,7 @@ class NewsController extends Controller
         $validated = $request->validate($rules, $messages);
 
         if ($request->hasFile('thumbnail')) {
-            $validated['thumbnail'] = $request->file('thumbnail')->store('news', 'public');
+            $validated['thumbnail'] = $this->storePublicThumbnail($request->file('thumbnail'));
         }
 
         $validated['slug'] = Str::slug($validated['title']) . '-' . time();
@@ -76,7 +76,7 @@ class NewsController extends Controller
             'published_at' => 'nullable|date',
             'excerpt' => 'nullable|string',
             'content' => 'required|string',
-             'thumbnail' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
+            'thumbnail' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
             'is_published' => 'nullable|boolean',
         ];
 
@@ -94,11 +94,9 @@ class NewsController extends Controller
         $validated = $request->validate($rules, $messages);
 
         if ($request->hasFile('thumbnail')) {
-            if ($news->thumbnail) {
-                Storage::disk('public')->delete($news->thumbnail);
-            }
+            $this->deletePublicStorageFile($news->thumbnail);
 
-            $validated['thumbnail'] = $request->file('thumbnail')->store('news', 'public');
+            $validated['thumbnail'] = $this->storePublicThumbnail($request->file('thumbnail'));
         }
 
         $validated['is_published'] = $request->boolean('is_published');
@@ -112,12 +110,39 @@ class NewsController extends Controller
 
     public function destroy(News $news): RedirectResponse
     {
-        if ($news->thumbnail) {
-            Storage::disk('public')->delete($news->thumbnail);
-        }
+        $this->deletePublicStorageFile($news->thumbnail);
 
         $news->delete();
 
         return back()->with('success', 'Berita berhasil dihapus.');
+    }
+
+    private function storePublicThumbnail($file): string
+    {
+        $filename = $file->hashName('news');
+
+        $fullPath = public_path('storage/' . $filename);
+        $directory = dirname($fullPath);
+
+        if (!File::exists($directory)) {
+            File::makeDirectory($directory, 0755, true);
+        }
+
+        $file->move($directory, basename($filename));
+
+        return $filename;
+    }
+
+    private function deletePublicStorageFile(?string $path): void
+    {
+        if (!$path) {
+            return;
+        }
+
+        $fullPath = public_path('storage/' . $path);
+
+        if (File::exists($fullPath)) {
+            File::delete($fullPath);
+        }
     }
 }

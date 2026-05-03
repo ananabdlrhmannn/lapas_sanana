@@ -15,7 +15,8 @@
 /node_modules
 /public/build
 /public/hot
-/public/storage
+# Dinonaktifkan supaya public/storage/galleries dan public/storage/news ikut ke-push
+# /public/storage
 /storage/*.key
 /storage/pail
 /vendor

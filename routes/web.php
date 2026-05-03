@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\VisitPdfController;
 
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/berita', [PublicNewsController::class, 'index'])->name('news.index');
 Route::get('/berita/{slug}', [PublicNewsController::class, 'show'])->name('news.show');
